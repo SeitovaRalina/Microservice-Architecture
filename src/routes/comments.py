@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, Path
 from sqlalchemy.orm import Session
-from typing import List
 
 from src.db import get_db
 from src.controllers import comments as comments_ctrl
@@ -8,7 +7,7 @@ from src.controllers import articles as articles_ctrl
 from src.core.utils.dependencies import get_current_user
 from src.schemas.comment import CommentCreate, CommentOut
 from src.schemas.user import ProfileOut
-from src.schemas.common import DeleteResponse
+from src.schemas.common import DeleteResponse, ListResponse
 
 router = APIRouter(prefix="/api/articles/{slug}/comments", tags=["comments"])
 
@@ -23,7 +22,7 @@ async def add_comment(payload: CommentCreate,
     out.author = ProfileOut.from_user(current_user)
     return out
 
-@router.get("", response_model=List[CommentOut],
+@router.get("", response_model=ListResponse[CommentOut],
              summary="Получить комментарии к статье", description="Возвращает список комментариев для указанной статьи.")
 async def list_comments(slug: str = Path(..., description="Slug статьи"),
                         db: Session = Depends(get_db)):

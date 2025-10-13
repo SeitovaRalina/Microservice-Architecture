@@ -4,6 +4,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 T = TypeVar('T')
 
+class ListResponse(BaseModel, Generic[T]):
+    items: List[T] = Field(..., description="Список элементов")
+
 class PaginationMeta(BaseModel):
     '''Метаданные для пагинации'''
     page: int = Field(..., ge=1, description="Номер текущей страницы", example=1)
@@ -11,9 +14,8 @@ class PaginationMeta(BaseModel):
     total_items: int = Field(..., ge=0, description="Общее количество элементов", example=100)
     total_pages: int = Field(..., ge=0, description="Общее количество страниц", example=5)
 
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse(ListResponse):
     '''Схема ответа с пагинацией'''
-    items: List[T] = Field(..., description="Список элементов на текущей странице")
     meta: PaginationMeta = Field(..., description="Метаданные пагинации")
 
 class DeleteResponse(BaseModel):
