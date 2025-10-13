@@ -1,56 +1,81 @@
-from typing import List, Optional
-from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
+from typing import List, Optional, Tuple
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.models.article import Article
 from src.models.tag import Tag
 from src.models.user import User
-from src.schemas import ArticleCreate, ArticleUpdate
-from src.utils import make_unique_slug
+from src.schemas.article import ArticleCreate, ArticleUpdate
+from src.core.utils.slug import make_unique_slug
+from src.core.errors.exceptions import NotFoundException, ForbiddenException
 
-def article_exists(db: Session, slug: str) -> bool:
-    return db.query(Article).filter(Article.slug == slug).first() is not None
+async def article_exists(db: AsyncSession, slug: str) -> bool:
+    q = await db.execute(select(Article).where(Article.slug == slug))
+    return q.scalar_one_or_none() is not None
 
-def create_article(db: Session, current_user: User, article_in: ArticleCreate) -> Article:
-    slug = make_unique_slug(article_in.title, lambda s: article_exists(db, s))
+async def create_article(db: AsyncSession, current_user: User, article_in: ArticleCreate) -> Article:
+    async def exists_check(s):
+        return await article_exists(db, s)
+    slug = await make_unique_slug(article_in.title, exists_check)
     article = Article(
         title=article_in.title,
         description=article_in.description,
         body=article_in.body,
         slug=slug,
-        author=current_user
+        author_id=current_user.id
     )
-    # handle tags
     tags_objs = []
-    for tag_name in (article_in.tagList or []):
-        tag_name_stripped = tag_name.strip().lower()
-        tag = db.query(Tag).filter(Tag.name == tag_name_stripped).first()
-        if not tag:
-            tag = Tag(name=tag_name_stripped)
-            db.add(tag)
-            db.flush()
-        tags_objs.append(tag)
+    if article_in.tagList:
+        for tag_name in article_in.tagList:
+            tag_name_stripped = tag_name.strip().lower()
+            q = await db.execute(select(Tag).where(Tag.name == tag_name_stripped))
+            tag = q.scalar_one_or_none()
+            if not tag:
+                tag = Tag(name=tag_name_stripped)
+                db.add(tag)
+                await db.flush()
+            tags_objs.append(tag)
     article.tags = tags_objs
+
     db.add(article)
-    db.commit()
-    db.refresh(article)
+    await db.commit()
+    await db.refresh(article)
     return article
 
-def list_articles(db: Session, limit: int = 20, offset: int = 0) -> List[Article]:
-    return db.query(Article).order_by(Article.created_at.desc()).offset(offset).limit(limit).all()
+async def list_articles(db: AsyncSession, page: int = 1, per_page: int = 10) -> Tuple[List[Article], int, int]:
+    offset = (page - 1) * per_page
+    q = await db.execute(
+        select(Article)
+        .offset(offset)
+        .limit(per_page)
+    )
+    articles = q.scalars().all()
 
-def get_article_by_slug(db: Session, slug: str) -> Optional[Article]:
-    return db.query(Article).filter(Article.slug == slug).first()
+    total_items = await db.scalar(select(func.count(Article.id)))
+    total_pages = (total_items + per_page - 1) // per_page if total_items > 0 else 1
 
-def update_article(db: Session, slug: str, current_user: User, article_in: ArticleUpdate) -> Article:
-    article = get_article_by_slug(db, slug)
+    return articles, total_items, total_pages
+
+async def get_article_by_slug(db: AsyncSession, slug: str) -> Optional[Article]:
+    q = await db.execute(select(Article).where(Article.slug == slug))
+    article = q.scalar_one_or_none()
+
     if not article:
-        raise HTTPException(status_code=404, detail="Article not found")
+        raise NotFoundException("Статья не найдена")
+    return article
+
+async def update_article(db: AsyncSession, slug: str, current_user: User, article_in: ArticleUpdate) -> Article:
+    article = await get_article_by_slug(db, slug)
+
     if article.author_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to update this article")
+        raise ForbiddenException(status_code=403, detail="Нет доступа для редактирования этой статьи")
+
     if article_in.title:
         article.title = article_in.title
-        # potentially update slug — keep same slug for simplicity or regenerate
-        article.slug = make_unique_slug(article.title, lambda s: article_exists(db, s) and s != slug)
+        async def exists_check(s):
+            found = await article_exists(db, s)
+            return found and s != slug
+        article.slug = await make_unique_slug(article.title, exists_check)
     if article_in.description:
         article.description = article_in.description
     if article_in.body:
@@ -59,22 +84,24 @@ def update_article(db: Session, slug: str, current_user: User, article_in: Artic
         article.tags.clear()
         for tag_name in article_in.tagList:
             tn = tag_name.strip().lower()
-            tag = db.query(Tag).filter(Tag.name == tn).first()
+            q = await db.execute(select(Tag).where(Tag.name == tn))
+            tag = q.scalar_one_or_none()
             if not tag:
                 tag = Tag(name=tn)
                 db.add(tag)
-                db.flush()
+                await db.flush()
             article.tags.append(tag)
-    db.commit()
-    db.refresh(article)
+
+    await db.commit()
+    await db.refresh(article)
+
     return article
 
-def delete_article(db: Session, slug: str, current_user: User):
-    article = get_article_by_slug(db, slug)
-    if not article:
-        raise HTTPException(status_code=404, detail="Article not found")
+async def delete_article(db: AsyncSession, slug: str, current_user: User):
+    article = await get_article_by_slug(db, slug)
+
     if article.author_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this article")
-    db.delete(article)
-    db.commit()
-    return
+        raise ForbiddenException(status_code=403, detail="Нет доступа для удаления этой статьи")
+
+    await db.delete(article)
+    await db.commit()

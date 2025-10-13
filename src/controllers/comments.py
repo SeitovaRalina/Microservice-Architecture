@@ -1,27 +1,36 @@
 from typing import List
-from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.models.comment import Comment
 from src.models.article import Article
 from src.models.user import User
-from src.schemas import CommentCreate
+from src.schemas.comment import CommentCreate
+from src.core.errors.exceptions import NotFoundException, ForbiddenException
 
-def add_comment(db: Session, article: Article, current_user: User, comment_in: CommentCreate) -> Comment:
-    comment = Comment(body=comment_in.body, author=current_user, article=article)
+async def add_comment(db: AsyncSession, article: Article, current_user: User, comment_in: CommentCreate) -> Comment:
+    comment = Comment(
+        body=comment_in.body,
+        author=current_user,
+        article=article
+    )
     db.add(comment)
-    db.commit()
-    db.refresh(comment)
+    await db.commit()
+    await db.refresh(comment)
     return comment
 
-def get_comments(db: Session, article: Article):
-    return db.query(Comment).filter(Comment.article_id == article.id).order_by(Comment.created_at.asc()).all()
+async def get_comments(db: AsyncSession, article: Article) -> List[Comment]:
+    q = await db.execute(
+        select(Comment).where(Comment.article_id == article.id).order_by(Comment.created_at.asc())
+    )
+    return q.scalars().all()
 
-def delete_comment(db: Session, comment_id: int, current_user: User):
-    comment = db.query(Comment).filter(Comment.id == comment_id).first()
+async def delete_comment(db: AsyncSession, comment_id: int, current_user: User):
+    q = await db.execute(select(Comment).where(Comment.id == comment_id))
+    comment = q.scalar_one_or_none()
     if not comment:
-        raise HTTPException(status_code=404, detail="Comment not found")
+        raise NotFoundException("Комментарий не найден")
     if comment.author_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this comment")
-    db.delete(comment)
-    db.commit()
-    return
+        raise ForbiddenException("Нет доступа для удаления этого комментария")
+    await db.delete(comment)
+    await db.commit()
