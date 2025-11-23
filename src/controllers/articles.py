@@ -1,107 +1,64 @@
-from typing import List, Optional, Tuple
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends
+from fastapi.params import Path, Query
 
-from src.models.article import Article
-from src.models.tag import Tag
+from src.db import get_db
+from src.services.article_service import ArticleService
+from src.schemas.article import ArticleCreate, ArticleUpdate, ArticleOut
+from src.schemas.user import ProfileOut
+from src.schemas.common import PaginatedResponse, PaginationMeta, DeleteResponse
+from src.core.utils.dependencies import get_current_user
 from src.models.user import User
-from src.schemas.article import ArticleCreate, ArticleUpdate
-from src.core.utils.slug import make_unique_slug
-from src.core.errors.exceptions import NotFoundException, ForbiddenException
+from src.models.article import Article
 
-async def article_exists(db: AsyncSession, slug: str) -> bool:
-    q = await db.execute(select(Article).where(Article.slug == slug))
-    return q.scalar_one_or_none() is not None
 
-async def create_article(db: AsyncSession, current_user: User, article_in: ArticleCreate) -> Article:
-    async def exists_check(s):
-        return await article_exists(db, s)
-    slug = await make_unique_slug(article_in.title, exists_check)
-    article = Article(
-        title=article_in.title,
-        description=article_in.description,
-        body=article_in.body,
-        slug=slug,
-        author_id=current_user.id
-    )
-    tags_objs = []
-    if article_in.tagList:
-        for tag_name in article_in.tagList:
-            tag_name_stripped = tag_name.strip().lower()
-            q = await db.execute(select(Tag).where(Tag.name == tag_name_stripped))
-            tag = q.scalar_one_or_none()
-            if not tag:
-                tag = Tag(name=tag_name_stripped)
-                db.add(tag)
-                await db.flush()
-            tags_objs.append(tag)
-    article.tags = tags_objs
+async def get_article_service(db=Depends(get_db)):
+    return ArticleService(db)
 
-    db.add(article)
-    await db.commit()
-    await db.refresh(article)
-    return article
+def _to_response(article: Article, author: User) -> ArticleOut:
+    resp = ArticleOut.model_validate(article)
+    resp.tagList = [tag.name for tag in article.tags]
+    resp.author = ProfileOut.from_user(author)
+    return resp
 
-async def list_articles(db: AsyncSession, page: int = 1, per_page: int = 10) -> Tuple[List[Article], int, int]:
-    offset = (page - 1) * per_page
-    q = await db.execute(
-        select(Article)
-        .offset(offset)
-        .limit(per_page)
-    )
-    articles = q.scalars().all()
 
-    total_items = await db.scalar(select(func.count(Article.id)))
-    total_pages = (total_items + per_page - 1) // per_page if total_items > 0 else 1
+async def create_article(
+    data: ArticleCreate,
+    service: ArticleService = Depends(get_article_service),
+    user: User = Depends(get_current_user),
+):
+    article = await service.create_article(user, data)
+    return _to_response(article, user)
 
-    return articles, total_items, total_pages
+async def list_articles(
+    page: int = Query(1, ge=1, description="Номер страницы"),
+    per_page: int = Query(10, ge=1, le=100, description="Количество статей на странице"),
+    service: ArticleService = Depends(get_article_service),
+):
+    articles, total, total_pages = await service.list_articles(page, per_page)
+    items = [_to_response(a, a.author) for a in articles]
+    meta = PaginationMeta(page=page, per_page=per_page, total_items=total, total_pages=total_pages)
+    return PaginatedResponse(items=items, meta=meta)
 
-async def get_article_by_slug(db: AsyncSession, slug: str) -> Optional[Article]:
-    q = await db.execute(select(Article).where(Article.slug == slug))
-    article = q.scalar_one_or_none()
+async def get_article_by_slug(
+    slug: str = Path(..., description="Slug статьи"),
+    service: ArticleService = Depends(get_article_service),
+):
+    article = await service.get_article(slug)
+    return _to_response(article, article.author)
 
-    if not article:
-        raise NotFoundException("Статья не найдена")
-    return article
+async def update_article(
+    slug: str = Path(..., description="Slug статьи"),
+    data: ArticleUpdate = None,
+    service: ArticleService = Depends(get_article_service),
+    user: User = Depends(get_current_user),
+):
+    article = await service.update_article(slug, user, data)
+    return _to_response(article, article.author)
 
-async def update_article(db: AsyncSession, slug: str, current_user: User, article_in: ArticleUpdate) -> Article:
-    article = await get_article_by_slug(db, slug)
-
-    if article.author_id != current_user.id:
-        raise ForbiddenException(status_code=403, detail="Нет доступа для редактирования этой статьи")
-
-    if article_in.title:
-        article.title = article_in.title
-        async def exists_check(s):
-            found = await article_exists(db, s)
-            return found and s != slug
-        article.slug = await make_unique_slug(article.title, exists_check)
-    if article_in.description:
-        article.description = article_in.description
-    if article_in.body:
-        article.body = article_in.body
-    if article_in.tagList is not None:
-        article.tags.clear()
-        for tag_name in article_in.tagList:
-            tn = tag_name.strip().lower()
-            q = await db.execute(select(Tag).where(Tag.name == tn))
-            tag = q.scalar_one_or_none()
-            if not tag:
-                tag = Tag(name=tn)
-                db.add(tag)
-                await db.flush()
-            article.tags.append(tag)
-
-    await db.commit()
-    await db.refresh(article)
-
-    return article
-
-async def delete_article(db: AsyncSession, slug: str, current_user: User):
-    article = await get_article_by_slug(db, slug)
-
-    if article.author_id != current_user.id:
-        raise ForbiddenException(status_code=403, detail="Нет доступа для удаления этой статьи")
-
-    await db.delete(article)
-    await db.commit()
+async def delete_article(
+    slug: str = Path(..., description="Slug статьи"),
+    service: ArticleService = Depends(get_article_service),
+    user: User = Depends(get_current_user),
+):
+    await service.delete_article(slug, user)
+    return DeleteResponse(detail="Article deleted")
