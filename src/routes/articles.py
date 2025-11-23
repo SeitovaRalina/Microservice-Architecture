@@ -10,7 +10,7 @@ from src.core.utils.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/articles", tags=["articles"])
 
-@router.post("/articles", response_model=ArticleOut, status_code=201,
+@router.post("", response_model=ArticleOut, status_code=201,
              summary="Создать статью", description="Создает новую статью. Требуется аутентификация.")
 async def create_article(article_in: ArticleCreate, db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     article = await articles_ctrl.create_article(db, current_user, article_in)

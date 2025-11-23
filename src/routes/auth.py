@@ -22,17 +22,17 @@ async def login(user_login: UserLogin, db: AsyncSession = Depends(get_db)):
     access_token = create_access_token({"sub": str(user.id)})
     return TokenResponse(access_token=access_token)
 
-@router.get("", response_model=UserOut,
+@router.get("/me", response_model=UserOut,
              summary="Получить текущего пользователя", description="Возвращает информацию о текущем аутентифицированном пользователе.")
 async def get_current_user(user = Depends(get_current_user)):
     return user
 
-@router.put("", response_model=UserOut,
+@router.put("/me", response_model=UserOut,
              summary="Обновить текущего пользователя", description="Обновляет информацию о текущем аутентифицированном пользователе.")
 async def update_user(user_in: UserUpdate, db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
     return await auth_ctrl.update_user(db, current_user, user_in)
 
-@router.delete("", response_model=DeleteResponse,
+@router.delete("/me", response_model=DeleteResponse,
                summary="Удалить текущего пользователя", description="Удаляет текущего аутентифицированного пользователя из системы.")
 async def delete_user(db: AsyncSession = Depends(get_db), current_user=Depends(get_current_user)):
     await auth_ctrl.delete_user(db, current_user)
