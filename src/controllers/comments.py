@@ -1,36 +1,54 @@
-from typing import List
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends, Path
 
-from src.models.comment import Comment
-from src.models.article import Article
+from src.core.di import get_article_service, get_comment_service
+from src.services.comment_service import CommentService
+from src.services.article_service import ArticleService
+from src.schemas.comment import CommentCreate, CommentOut
+from src.schemas.user import ProfileOut
+from src.schemas.common import ListResponse, DeleteResponse
+from src.core.utils.dependencies import get_current_user
 from src.models.user import User
-from src.schemas.comment import CommentCreate
-from src.core.errors.exceptions import NotFoundException, ForbiddenException
 
-async def add_comment(db: AsyncSession, article: Article, current_user: User, comment_in: CommentCreate) -> Comment:
-    comment = Comment(
-        body=comment_in.body,
-        author=current_user,
-        article=article
-    )
-    db.add(comment)
-    await db.commit()
-    await db.refresh(comment)
-    return comment
 
-async def get_comments(db: AsyncSession, article: Article) -> List[Comment]:
-    q = await db.execute(
-        select(Comment).where(Comment.article_id == article.id).order_by(Comment.created_at.asc())
-    )
-    return q.scalars().all()
+async def add_comment(
+    payload: CommentCreate,
+    slug: str = Path(..., description="Slug статьи"),
+    article_service: ArticleService = Depends(get_article_service),
+    comment_service: CommentService = Depends(get_comment_service),
+    current_user: User = Depends(get_current_user),
+):
+    article = await article_service.get_article(slug)
+    comment = await comment_service.add_comment(article, current_user, payload)
 
-async def delete_comment(db: AsyncSession, comment_id: int, current_user: User):
-    q = await db.execute(select(Comment).where(Comment.id == comment_id))
-    comment = q.scalar_one_or_none()
-    if not comment:
-        raise NotFoundException("Комментарий не найден")
-    if comment.author_id != current_user.id:
-        raise ForbiddenException("Нет доступа для удаления этого комментария")
-    await db.delete(comment)
-    await db.commit()
+    out = CommentOut.model_validate(comment)
+    out.author = ProfileOut.from_user(current_user)
+    return out
+
+
+async def list_comments(
+    slug: str = Path(..., description="Slug статьи"),
+    article_service: ArticleService = Depends(get_article_service),
+    comment_service: CommentService = Depends(get_comment_service),
+):
+    article = await article_service.get_article(slug)
+    comments = await comment_service.list_comments(article)
+
+    result = []
+    for c in comments:
+        co = CommentOut.model_validate(c)
+        co.author = ProfileOut.from_user(c.author)
+        result.append(co)
+
+    return ListResponse(items=result)
+
+
+async def delete_comment(
+    slug: str = Path(..., description="Slug статьи"),
+    comment_id: int = Path(..., description="Уникальный идентификатор комментария"),
+    article_service: ArticleService = Depends(get_article_service),
+    comment_service: CommentService = Depends(get_comment_service),
+    current_user: User = Depends(get_current_user),
+):
+    _ = await article_service.get_article(slug)
+    await comment_service.delete_comment(comment_id, current_user)
+    return DeleteResponse(detail="Comment deleted")
