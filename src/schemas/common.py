@@ -19,7 +19,7 @@ class PaginatedResponse(ListResponse):
     meta: PaginationMeta = Field(..., description="Метаданные пагинации")
 
 class DeleteResponse(BaseModel):
-    detail: str = Field(..., description="Сообщение об успешном удалении", example="Comment deleted")
+    detail: str = Field(..., description="Сообщение об успешном удалении", example="Entity deleted")
 
 class ORMBaseModel(BaseModel):
     '''Схема базовой модели с ORM совместимостью'''
