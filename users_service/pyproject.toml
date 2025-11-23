@@ -1,0 +1,25 @@
+[project]
+name = "users-service"
+version = "0.1.0"
+description = "Users microservice"
+authors = [
+    {name = "Ralina", email = "seitovaralina1@gmail.com"}
+]
+requires-python = "^3.13"
+dependencies = [
+    "fastapi (>=0.121.3,<0.122.0)",
+    "uvicorn (>=0.38.0,<0.39.0)",
+    "sqlalchemy (>=2.0.44,<3.0.0)",
+    "asyncpg (>=0.30.0,<0.31.0)",
+    "pydantic (>=2.12.4,<3.0.0)",
+    "python-jose (>=3.5.0,<4.0.0)",
+    "passlib (>=1.7.4,<2.0.0)",
+    "python-multipart (>=0.0.20,<0.0.21)",
+    "alembic (>=1.17.2,<2.0.0)",
+    "dotenv (>=0.9.9,<0.10.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
