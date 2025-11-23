@@ -21,6 +21,7 @@ class ArticleRepository:
 
     async def update(self, article: Article) -> None:
         await self.session.flush([article])
+        await self.session.refresh(article)
 
     async def delete(self, article: Article) -> None:
         await self.session.delete(article)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends
 
 from src.schemas.article import ArticleCreate, ArticleOut, ArticleUpdate
 from src.schemas.common import DeleteResponse, PaginatedResponse
