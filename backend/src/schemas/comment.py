@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, Field
 
 from src.schemas.common import ORMBaseModel
@@ -12,4 +13,4 @@ class CommentOut(ORMBaseModel):
     '''Схема вывода комментария'''
     id : int = Field(..., description="Уникальный идентификатор", example=1)
     body: str = Field(..., description="Текст комментария", example="Это комментарий к статье.")
-    author: ProfileOut = Field(..., description="Автор комментария")
+    author: Optional[ProfileOut] = Field(None, description="Автор комментария")

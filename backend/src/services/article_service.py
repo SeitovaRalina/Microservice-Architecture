@@ -1,7 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.article import Article
-from src.models.user import User
 from src.schemas.article import ArticleCreate, ArticleUpdate
 from src.repositories.article_repository import ArticleRepository
 from src.core.utils.slug import make_unique_slug
@@ -12,7 +11,7 @@ class ArticleService:
     def __init__(self, db: AsyncSession):
         self.repo = ArticleRepository(db)
 
-    async def create_article(self, current_user: User, data: ArticleCreate) -> Article:
+    async def create_article(self, current_user_id: int, data: ArticleCreate) -> Article:
         slug = await make_unique_slug(data.title, self.repo.slug_exists)
 
         article = Article(
@@ -20,7 +19,7 @@ class ArticleService:
             description=data.description,
             body=data.body,
             slug=slug,
-            author_id=current_user.id
+            author_id=current_user_id,
         )
 
         tags = await self.repo.get_or_create_tags(data.tagList or [])
@@ -39,10 +38,10 @@ class ArticleService:
         total_pages = (total + per_page - 1) // per_page if total else 1
         return articles, total, total_pages
 
-    async def update_article(self, slug: str, current_user: User, data: ArticleUpdate) -> Article:
+    async def update_article(self, slug: str, current_user_id: int, data: ArticleUpdate) -> Article:
         article = await self.get_article(slug)
 
-        if article.author_id != current_user.id:
+        if article.author_id != current_user_id:
             raise ForbiddenException("Нет доступа для редактирования этой статьи")
 
         update_data = data.model_dump(exclude_unset=True)
@@ -65,8 +64,8 @@ class ArticleService:
         await self.repo.update(article)
         return article
 
-    async def delete_article(self, slug: str, current_user: User) -> None:
+    async def delete_article(self, slug: str, current_user_id: int) -> None:
         article = await self.get_article(slug)
-        if article.author_id != current_user.id:
+        if article.author_id != current_user_id:
             raise ForbiddenException("Нет доступа для удаления этой статьи")
         await self.repo.delete(article)
