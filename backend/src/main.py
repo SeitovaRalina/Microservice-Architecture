@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.routers import articles as articles_routes
 from src.routers import comments as comments_routes
+from src.routers import internal as internal_routes
 from src.core.errors.handlers import setup_exception_handlers
 
 app = FastAPI(
@@ -26,6 +27,7 @@ setup_exception_handlers(app)
 
 app.include_router(articles_routes.router)
 app.include_router(comments_routes.router)
+app.include_router(internal_routes.router, include_in_schema=False)
 
 @app.get("/health", tags=["health"],
          summary="Проверить состояние сервиса", description="Возвращает статус работы сервиса.")

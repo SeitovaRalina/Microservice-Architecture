@@ -6,6 +6,7 @@ from src.repositories.user_repository import UserRepository
 from src.core.utils.security import get_password_hash, verify_password
 from src.core.errors.exceptions import (
     ConflictException,
+    NotFoundException,
     UnauthorizedException,
     ValidationException,
 )
@@ -14,6 +15,12 @@ from src.core.errors.exceptions import (
 class AuthService:
     def __init__(self, db: AsyncSession):
         self.repo = UserRepository(db)
+
+    async def get_user_by_id(self, user_id: int) -> User:
+        user = await self.repo.get_by_id(user_id)
+        if not user or user.is_deleted:
+            raise NotFoundException("Пользователь не найден")
+        return user
 
     async def register(self, data: UserCreate) -> User:
         if await self.repo.get_by_email(data.email):

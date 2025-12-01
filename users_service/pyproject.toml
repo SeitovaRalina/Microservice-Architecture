@@ -17,7 +17,8 @@ dependencies = [
     "python-multipart (>=0.0.20,<0.0.21)",
     "alembic (>=1.17.2,<2.0.0)",
     "dotenv (>=0.9.9,<0.10.0)",
-    "bcrypt (==4.3.0)"
+    "bcrypt (==4.3.0)",
+    "httpx[http2] (>=0.28.1,<0.29.0)"
 ]
 
 

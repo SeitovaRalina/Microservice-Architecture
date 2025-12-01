@@ -43,6 +43,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db-main/${POSTGRES_DB_MAIN}
       JWT_SECRET: ${JWT_SECRET}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
+      USERS_SERVICE_URL: ${USERS_SERVICE_URL}
     networks:
       - internal
 
@@ -56,10 +57,9 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db-users/${POSTGRES_DB_USERS}
       JWT_SECRET: ${JWT_SECRET}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
+      BACKEND_SERVICE_URL: ${BACKEND_SERVICE_URL}
     networks:
       - internal
-    ports:
-      - "8001:8000" # убрать потом - для разработки
 
   api-gateway:
     image: nginx:latest
@@ -81,9 +81,23 @@ services:
     container_name: swagger-ui
     environment:
       URLS: '[{"url": "/api/users/openapi.json", "name": "Users Service"}, {"url": "/api/openapi.json", "name": "Blog Service"}]'
-      # VALIDATOR_URL: "none"  # отключаем валидацию (иначе ругается на дубли схем)
     networks:
       - internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 
 networks:
   internal:
@@ -92,3 +106,4 @@ networks:
 volumes:
   db_main_data:
   db_users_data:
+  redis_data:
