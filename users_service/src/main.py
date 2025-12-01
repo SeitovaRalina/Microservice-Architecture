@@ -7,7 +7,11 @@ from src.core.errors.handlers import setup_exception_handlers
 app = FastAPI(
     title="Users Service API",
     version="1.0.0",
-    description="Отдельный микросервис для управления пользователями"
+    description="Отдельный микросервис для управления пользователями",
+    openapi_url="/openapi.json",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    root_path="/api/users"
 )
 
 app.add_middleware(
