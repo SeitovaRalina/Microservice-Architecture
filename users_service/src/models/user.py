@@ -14,6 +14,3 @@ class User(Base):
 
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-
-    articles: Mapped[List["Article"]] = relationship("Article", back_populates="author", passive_deletes=True)
-    comments: Mapped[List["Comment"]] = relationship("Comment", back_populates="author", cascade="all, delete-orphan")
