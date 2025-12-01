@@ -1,38 +1,94 @@
 services:
-  app:
-    build: .
-    container_name: blog_app
-    env_file:
-      - .env
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-    restart: unless-stopped
+  db-main:
+    image: postgres:16
+    container_name: blog_db_main
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB_MAIN}
+    volumes:
+      - db_main_data:/var/lib/postgresql/data
+    networks:
+      - internal
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB_MAIN}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  db:
+  db-users:
     image: postgres:16
-    container_name: blog_db
+    container_name: blog_db_users
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-blog_db}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB_USERS}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    restart: unless-stopped
-    command: postgres -c timezone=UTC
+      - db_users_data:/var/lib/postgresql/data
+    networks:
+      - internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB_USERS}"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  backend:
+    build: ./backend
+    container_name: backend
+    depends_on:
+      db-main:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db-main/${POSTGRES_DB_MAIN}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+    networks:
+      - internal
+
+  users_service:
+    build: ./users_service
+    container_name: users_service
+    depends_on:
+      db-users:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db-users/${POSTGRES_DB_USERS}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+    networks:
+      - internal
+    ports:
+      - "8001:8000" # убрать потом - для разработки
+
+  api-gateway:
+    image: nginx:latest
+    container_name: api-gateway
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - users_service
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - internal
+
+
+  swagger-ui:
+    image: swaggerapi/swagger-ui:latest
+    container_name: swagger-ui
+    environment:
+      URLS: '[{"url": "/api/users/openapi.json", "name": "Users Service"}, {"url": "/api/openapi.json", "name": "Blog Service"}]'
+      # VALIDATOR_URL: "none"  # отключаем валидацию (иначе ругается на дубли схем)
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
 
 volumes:
-  postgres_data:
+  db_main_data:
+  db_users_data:
