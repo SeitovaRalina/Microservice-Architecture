@@ -2,7 +2,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from src.schemas.common import ORMBaseModel
-from src.schemas.user import ProfileOut
+from backend.src.schemas.profile import ProfileOut
 
 
 class CommentCreate(BaseModel):

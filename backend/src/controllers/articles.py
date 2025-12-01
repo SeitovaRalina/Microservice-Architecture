@@ -4,7 +4,7 @@ from fastapi.params import Path, Query
 from src.core.di import get_article_service
 from src.services.article_service import ArticleService
 from src.schemas.article import ArticleCreate, ArticleUpdate, ArticleOut
-from src.schemas.user import ProfileOut
+from backend.src.schemas.profile import ProfileOut
 from src.schemas.common import PaginatedResponse, PaginationMeta, DeleteResponse
 from src.core.utils.dependencies import get_current_user_id
 from src.models.article import Article

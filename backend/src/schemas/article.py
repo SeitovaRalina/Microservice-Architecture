@@ -3,7 +3,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from src.schemas.common import ORMBaseModel
-from src.schemas.user import ProfileOut
+from backend.src.schemas.profile import ProfileOut
 
 
 class ArticleCreate(BaseModel):

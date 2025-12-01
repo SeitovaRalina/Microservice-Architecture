@@ -4,7 +4,7 @@ from src.core.di import get_article_service, get_comment_service
 from src.services.comment_service import CommentService
 from src.services.article_service import ArticleService
 from src.schemas.comment import CommentCreate, CommentOut
-from src.schemas.user import ProfileOut
+from backend.src.schemas.profile import ProfileOut
 from src.schemas.common import ListResponse, DeleteResponse
 from src.core.utils.dependencies import get_current_user_id
 
