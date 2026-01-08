@@ -39,11 +39,14 @@ services:
     depends_on:
       db-main:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db-main/${POSTGRES_DB_MAIN}
       JWT_SECRET: ${JWT_SECRET}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
       USERS_SERVICE_URL: ${USERS_SERVICE_URL}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
     networks:
       - internal
 
@@ -58,6 +61,23 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
       BACKEND_SERVICE_URL: ${BACKEND_SERVICE_URL}
+    networks:
+      - internal
+
+  worker:
+    build: ./worker
+    container_name: worker
+    depends_on:
+      push-notificator:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      db-users:
+        condition: service_healthy
+    environment:
+      DATABASE_URL_USERS: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db-users/${POSTGRES_DB_USERS}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      PUSH_URL: ${PUSH_URL}
     networks:
       - internal
 
@@ -98,6 +118,13 @@ services:
       timeout: 3s
       retries: 5
 
+  push-notificator:
+    image: ghcr.io/ayusavin/push-notification-playground:1.0.0
+    container_name: push-notificator
+    ports:
+      - "8001:8000"
+    networks:
+      - internal
 
 networks:
   internal:
