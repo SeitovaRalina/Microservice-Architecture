@@ -4,7 +4,7 @@ from src.models.article import Article
 from src.schemas.article import ArticleCreate, ArticleUpdate
 from src.repositories.article_repository import ArticleRepository
 from src.core.utils.slug import make_unique_slug
-from src.core.errors.exceptions import NotFoundException, ForbiddenException
+from src.core.errors.exceptions import NotFoundException, ForbiddenException, ConflictException
 
 
 class ArticleService:
@@ -69,3 +69,32 @@ class ArticleService:
         if article.author_id != current_user_id:
             raise ForbiddenException("Нет доступа для удаления этой статьи")
         await self.repo.delete(article)
+
+    async def update_article_status(self, article: Article, new_status: str) -> Article:
+        article.status = new_status
+        await self.repo.update(article)
+        return article
+
+    async def set_article_preview(self, article: Article, preview_url: str) -> Article:
+        if article.preview_url == preview_url:
+            return article
+        article.preview_url = preview_url
+        await self.repo.update(article)
+        return article
+
+    async def reject_article(self, slug: str) -> Article:
+        article = await self.get_article(slug)
+        if article.status not in {"DRAFT", "PENDING_PUBLISH"}:
+            raise ConflictException("Cannot reject article in current state")
+        return await self.update_article_status(article, "REJECTED")
+
+    async def mark_article_error(self, slug: str) -> Article:
+        article = await self.get_article(slug)
+        return await self.update_article_status(article, "ERROR")
+
+    async def publish_article(self, slug: str) -> Article:
+        article = await self.get_article(slug)
+        if article.status != "PENDING_PUBLISH":
+            raise ConflictException("Article is not pending publish")
+        article = await self.update_article_status(article, "PUBLISHED")
+        return article

@@ -27,7 +27,7 @@ setup_exception_handlers(app)
 
 app.include_router(articles_routes.router)
 app.include_router(comments_routes.router)
-app.include_router(internal_routes.router, include_in_schema=False)
+app.include_router(internal_routes.router)
 
 @app.get("/health", tags=["health"],
          summary="Проверить состояние сервиса", description="Возвращает статус работы сервиса.")

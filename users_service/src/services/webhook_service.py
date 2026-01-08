@@ -17,10 +17,14 @@ class WebhookService:
         ) -> None:
         webhook_url = f"{self.backend_service_url}/internal/invalidate-profile-cache"
         payload = {"user_id": user_id, "reason": reason}
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Token {os.getenv('API_KEY_USERS')}",
+        }
 
         try:
             async with httpx.AsyncClient(timeout=1.0) as client:
-                await client.post(webhook_url, json=payload)
+                await client.post(webhook_url, json=payload, headers=headers)
             logger.info(f"Webhook fired: invalidate profile {user_id} ({reason})")
         except Exception as e:
             logger.error(f"Webhook failed for user {user_id}: {e}")

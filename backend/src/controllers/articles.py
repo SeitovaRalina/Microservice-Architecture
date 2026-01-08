@@ -11,9 +11,6 @@ from src.schemas.common import PaginatedResponse, PaginationMeta, DeleteResponse
 from src.core.utils.dependencies import get_current_user_id
 from src.models.article import Article
 
-import logging
-logger = logging.getLogger(__name__)
-
 
 def _to_response(article: Article, profile: ProfileOut) -> ArticleOut:
     resp = ArticleOut.model_validate(article)
