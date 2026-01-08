@@ -2,6 +2,7 @@ from fastapi import Depends
 from fastapi.params import Path, Query
 
 from src.core.di import get_article_service, get_user_cache_service
+from src.core.celery_app import celery_app
 from src.services.article_service import ArticleService
 from src.services.user_cache_service import UserCacheService
 from src.schemas.article import ArticleCreate, ArticleUpdate, ArticleOut
@@ -9,6 +10,9 @@ from src.schemas.profile import ProfileOut
 from src.schemas.common import PaginatedResponse, PaginationMeta, DeleteResponse
 from src.core.utils.dependencies import get_current_user_id
 from src.models.article import Article
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 def _to_response(article: Article, profile: ProfileOut) -> ArticleOut:
@@ -26,6 +30,19 @@ async def create_article(
 ) -> ArticleOut:
     article = await article_service.create_article(user_id, data)
     profile = await cache_service.get_profile(user_id)
+
+    task_id = f"notify-article-{article.id}-author-{user_id}"
+    celery_app.send_task(
+        'notify_subscribers',
+        kwargs={
+            'author_id': user_id,
+            'article_id': article.id,
+            'article_title': article.title,
+        },
+        task_id=task_id, # гарантирует идемпотентность
+        queue="notifications"
+    )
+
     return _to_response(article, profile)
 
 async def list_articles(
@@ -39,7 +56,6 @@ async def list_articles(
     items = []
     for a in articles:
         profile = await cache_service.get_profile(a.author_id)
-        print(profile)
         items.append(_to_response(a, profile))
     meta = PaginationMeta(page=page, per_page=per_page, total_items=total, total_pages=total_pages)
     return PaginatedResponse(items=items, meta=meta)
