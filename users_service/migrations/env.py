@@ -13,6 +13,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.db import Base, DATABASE_URL
 from src.models.user import User
+from src.models.subscriber import Subscriber
 
 config = context.config
 config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL", DATABASE_URL))
