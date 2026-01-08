@@ -76,5 +76,8 @@ class AuthService:
 
         return await self.repo.update(current_user)
 
+    async def set_subscription_key(self, user: User, key: str | None) -> User:
+        return await self.repo.set_subscription_key(user, key)
+
     async def delete_account(self, user: User) -> None:
         await self.repo.soft_delete(user)

@@ -27,6 +27,8 @@ class UserUpdate(BaseModel):
     bio: Optional[str] = Field(None, example="Это моя обновленная биография.", description="Обновленная биография")
     image_url: Optional[str] = Field(None, example="https://example.com/new_avatar.jpg", description="Новый URL аватара")
 
+    model_config = ConfigDict(extra="forbid")
+
 class UserOut(ORMBaseModel):
     '''Схема вывода данных авторизованного пользователя'''
     updated_at: datetime = Field(..., description="Дата и время последнего обновления", example="2023-10-05T14:48:00.000Z")
@@ -34,6 +36,11 @@ class UserOut(ORMBaseModel):
     username: str = Field(..., description="Имя пользователя", example="user")
     bio: Optional[str] = Field(None, description="Краткая биография пользователя", example="Привет! Я новый пользователь.")
     image_url: Optional[str] = Field(None, description="URL аватара пользователя", example="https://example.com/avatar.jpg")
+    subscription_key: Optional[str] = Field(
+        None,
+        description="Ключ для получения push-уведомлений",
+        example="bb779f9b-44b3-48e7-9576-bbdf7884cbb1"
+    )
 
 class TokenResponse(BaseModel):
     '''Схема ответа с JWT токеном'''

@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.user import User
 
-
 class UserRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -38,3 +37,9 @@ class UserRepository:
         user.deleted_at = datetime.now(timezone.utc)
         await self.session.flush([user])
         await self.session.refresh(user)
+
+    async def set_subscription_key(self, user: User, key: str | None) -> User:
+        user.subscription_key = key
+        await self.session.flush([user])
+        await self.session.refresh(user)
+        return user

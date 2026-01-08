@@ -44,13 +44,11 @@ class UserCacheService:
     async def _fetch_from_users_service(self, user_id: int) -> Optional[ProfileOut]:
         try:
             async with httpx.AsyncClient(timeout=1.5) as client:
-                print(f"{self.users_service_url}/api/users/{user_id}/profile")
                 response = await client.get(
                     f"http://users_service:8000/api/users/{user_id}/profile"
                 )
                 if response.status_code == 200:
                     data = response.json()
-                    print(data)
                     return ProfileOut(**data)
                 elif response.status_code == 404:
                     profile = ProfileOut(username="deleted_user", bio=None, image_url=None)
