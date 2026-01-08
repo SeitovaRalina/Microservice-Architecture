@@ -1,8 +1,8 @@
 import os
-from typing import AsyncGenerator
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, scoped_session
 from datetime import datetime
 from sqlalchemy import DateTime, Integer, func
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, declared_attr, Mapped, mapped_column
 from dotenv import load_dotenv, find_dotenv
 
@@ -10,8 +10,8 @@ load_dotenv(find_dotenv())
 
 DATABASE_URL = os.getenv("DATABASE_URL_USERS")
 
-engine = create_async_engine(DATABASE_URL, echo=True, pool_pre_ping=True)
-AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+engine = create_engine(DATABASE_URL, echo=True, pool_pre_ping=True)
+SessionLocal = scoped_session(sessionmaker(bind=engine, autocommit=False, autoflush=False))
 
 class Base(DeclarativeBase):
     __abstract__ = True
@@ -24,13 +24,13 @@ class Base(DeclarativeBase):
     def __tablename__(cls) -> str:
         return cls.__name__.lower() + 's'
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()

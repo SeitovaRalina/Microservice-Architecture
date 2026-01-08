@@ -15,8 +15,13 @@ class SubscriptionService:
     async def subscribe_to_author(self, subscriber: User, target_user_id: int) -> None:
         if subscriber.id == target_user_id:
             raise ValidationException("Нельзя подписаться на самого себя")
-        if not await self.user_repo.get_by_id(target_user_id):
+
+        author = await self.user_repo.get_by_id(target_user_id)
+        if not author:
             raise NotFoundException("Пользователь-автор не найден")
+        if author.is_deleted:
+            raise ValidationException("Нельзя подписаться на удалённого пользователя")
+
         try:
             await self.sub_repo.subscribe(subscriber.id, target_user_id)
         except IntegrityError:

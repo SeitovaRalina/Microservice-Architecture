@@ -27,8 +27,6 @@ class UserUpdate(BaseModel):
     bio: Optional[str] = Field(None, example="Это моя обновленная биография.", description="Обновленная биография")
     image_url: Optional[str] = Field(None, example="https://example.com/new_avatar.jpg", description="Новый URL аватара")
 
-    model_config = ConfigDict(extra="forbid")
-
 class UserOut(ORMBaseModel):
     '''Схема вывода данных авторизованного пользователя'''
     updated_at: datetime = Field(..., description="Дата и время последнего обновления", example="2023-10-05T14:48:00.000Z")

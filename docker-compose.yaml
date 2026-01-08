@@ -75,7 +75,7 @@ services:
       db-users:
         condition: service_healthy
     environment:
-      DATABASE_URL_USERS: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db-users/${POSTGRES_DB_USERS}
+      DATABASE_URL_USERS: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db-users/${POSTGRES_DB_USERS}
       CELERY_BROKER_URL: ${CELERY_BROKER_URL}
       PUSH_URL: ${PUSH_URL}
     networks:

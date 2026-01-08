@@ -19,6 +19,6 @@ class SubscriberRepository:
                 Subscriber.subscriber_id == subscriber_id,
                 Subscriber.author_id == author_id
             )
-        ).returning(Subscriber.id)
+        )
         result = await self.session.execute(stmt)
         return result.rowcount
