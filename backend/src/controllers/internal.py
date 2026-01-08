@@ -1,8 +1,9 @@
 from fastapi import Depends
 from fastapi.params import Path
 
+from src.core.errors.exceptions import ForbiddenException
+from src.core.utils.dependencies import get_current_user_id
 from src.core.di import get_api_key_service, get_article_service, get_user_cache_service
-from src.core.celery_app import celery_app
 from src.services.article_service import ArticleService
 from src.services.user_cache_service import UserCacheService
 from src.schemas.article import ArticleOut
@@ -45,31 +46,21 @@ async def internal_publish_article(
 ) -> ArticleOut:
     article = await article_service.publish_article(slug)
     profile = await cache_service.get_profile(article.author_id)
-
-    task_id = f"notify-article-{article.id}-author-{article.author_id}"
-    if article.author_id:
-        celery_app.send_task(
-            'notify_subscribers',
-            kwargs={
-                'author_id': article.author_id,
-                'article_id': article.id,
-                'article_title': article.title,
-            },
-            task_id=task_id, # гарантирует идемпотентность
-            queue="notifications"
-        )
-
     return _to_response(article, profile)
 
 
 async def admin_create_api_key(
     payload: ApiKeyCreate,
+    user_id: int = Depends(get_current_user_id),
     api_key_service = Depends(get_api_key_service),
 ) -> ApiKeyResponse:
+    if user_id != 1:
+        raise ForbiddenException("Недостаточно прав.")
     api_key = await api_key_service.generate_key(payload)
     return ApiKeyResponse(
         id=api_key.id,
         key=api_key.key,
         description=api_key.description,
+        scopes=api_key.scopes,
         expires_at=api_key.expires_at,
     )

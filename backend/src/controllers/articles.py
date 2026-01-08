@@ -28,18 +28,6 @@ async def create_article(
     article = await article_service.create_article(user_id, data)
     profile = await cache_service.get_profile(user_id)
 
-    task_id = f"notify-article-{article.id}-author-{user_id}"
-    celery_app.send_task(
-        'notify_subscribers',
-        kwargs={
-            'author_id': user_id,
-            'article_id': article.id,
-            'article_title': article.title,
-        },
-        task_id=task_id, # гарантирует идемпотентность
-        queue="notifications"
-    )
-
     return _to_response(article, profile)
 
 async def list_articles(
@@ -86,3 +74,28 @@ async def delete_article(
 ) -> DeleteResponse:
     await article_service.delete_article(slug, user_id)
     return DeleteResponse(detail="Article deleted")
+
+async def publish_article(
+    slug: str = Path(..., description="Уникальный slug статьи"),
+    user_id: int = Depends(get_current_user_id),
+    article_service: ArticleService = Depends(get_article_service),
+    cache_service: UserCacheService = Depends(get_user_cache_service),
+) -> ArticleOut:
+    article = await article_service.request_article_publication(slug, user_id)
+    profile = await cache_service.get_profile(article.author_id)
+
+    task_id = f"notify-article-{article.id}-author-{article.author_id}"
+    if article.author_id:
+        celery_app.send_task(
+            'post.moderate',
+            kwargs={
+                "article_id": article.id,
+                "slug": article.slug,
+                "title": article.title,
+                'author_id': user_id,
+            },
+            task_id=task_id, # гарантирует идемпотентность
+            queue="moderation"
+        )
+
+    return _to_response(article, profile)

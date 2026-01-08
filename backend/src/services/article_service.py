@@ -75,7 +75,8 @@ class ArticleService:
         await self.repo.update(article)
         return article
 
-    async def set_article_preview(self, article: Article, preview_url: str) -> Article:
+    async def set_article_preview(self, slug: str, preview_url: str) -> Article:
+        article = await self.get_article(slug)
         if article.preview_url == preview_url:
             return article
         article.preview_url = preview_url
@@ -97,4 +98,15 @@ class ArticleService:
         if article.status != "PENDING_PUBLISH":
             raise ConflictException("Article is not pending publish")
         article = await self.update_article_status(article, "PUBLISHED")
+        return article
+
+    async def request_article_publication(self, slug: str, current_user_id: int) -> Article:
+        article = await self.get_article(slug)
+
+        if article.author_id != current_user_id:
+            raise ForbiddenException("Нет доступа для публикации этой статьи")
+        if article.status != "DRAFT":
+            raise ConflictException(f"Нельзя опубликовать статью в статусе {article.status}")
+
+        article = await self.update_article_status(article, "PENDING_PUBLISH")
         return article

@@ -2,6 +2,7 @@ import secrets
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.errors.exceptions import NotFoundException
 from src.schemas.internal import ApiKeyCreate
 from src.repositories.api_key_repository import ApiKeyRepository
 from src.models.api_key import ApiKey
@@ -19,12 +20,14 @@ class ApiKeyService:
         api_key = ApiKey(
             key=key,
             description=payload.description,
-            expires_at=payload.expires_at,
+            scopes=payload.scopes,
         )
         return await self.repo.create(api_key)
 
-    async def validate_key(self, key: str) -> bool:
+    async def get_valid_key(self, key: str) -> ApiKey:
         api_key = await self.repo.get_by_key(key)
+
         if not api_key or (api_key.expires_at and api_key.expires_at < datetime.now(timezone.utc)):
-            return False
-        return True
+            raise NotFoundException("Недействительный или истёкший API ключ")
+
+        return api_key

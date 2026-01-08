@@ -30,3 +30,10 @@ async def update_article(payload: ArticleUpdate = Depends(article_ctrl.update_ar
                summary="Удалить статью по slug", description="Удаляет статью по ее slug. Требуется аутентификация.")
 async def delete_article(payload: DeleteResponse = Depends(article_ctrl.delete_article)):
     return payload
+
+@router.post("/{slug}/publish",
+             response_model=ArticleOut,
+             summary="Запросить публикацию статьи",
+             description="Запускает процесс модерации и публикации. Доступно только автору статьи в статусе DRAFT.")
+async def request_publish_article(payload: ArticleOut = Depends(article_ctrl.publish_article)):
+    return payload

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -21,11 +21,12 @@ class SuccessResponse(BaseModel):
 class ApiKeyCreate(BaseModel):
     '''Схема создания API ключа (админский эндпоинт)'''
     description: str = Field(..., example="all-internal-workers")
-    expires_at: Optional[datetime] = Field(None, description="Дата и время истечения срока действия ключа", example="2024-12-31T23:59:59Z")
+    scopes: List[str] = Field(..., example=["moderate", "reject"])
 
 class ApiKeyResponse(BaseModel):
     '''Схема ответа с информацией об API ключе (админский эндпоинт)'''
     id: int
     key: str
     description: str
+    scopes: List[str]
     expires_at: Optional[datetime]
