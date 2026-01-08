@@ -1,0 +1,19 @@
+[project]
+name = "publish-worker"
+version = "0.1.0"
+description = "Publish worker for SAGA"
+authors = [
+    {name = "Ralina", email = "seitovaralina1@gmail.com"}
+]
+requires-python = "^3.13"
+dependencies = [
+    "dotenv (>=0.9.9,<0.10.0)",
+    "celery (>=5.6.2,<6.0.0)",
+    "redis (>=7.1.0,<8.0.0)",
+    "requests (>=2.32.5,<3.0.0)",
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
