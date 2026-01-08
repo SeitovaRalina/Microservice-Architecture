@@ -1,5 +1,5 @@
 from typing import List, Optional
-from sqlalchemy import Integer, String, Text
+from sqlalchemy import Enum, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db import Base
@@ -10,6 +10,13 @@ class Article(Base):
     description: Mapped[str] = mapped_column(String(500))
     body: Mapped[str] = mapped_column(Text)
     slug: Mapped[str] = mapped_column(String(400), unique=True, index=True)
+    preview_url: Mapped[Optional[str]] = mapped_column(String(500))
+    status: Mapped[str] = mapped_column(
+        Enum('DRAFT', 'PENDING_PUBLISH', 'PUBLISHED', 'REJECTED', 'ERROR', name='article_status'),
+        default='DRAFT',
+        nullable=False,
+        index=True
+    )
 
     author_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=False, index=True)
 

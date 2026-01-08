@@ -27,5 +27,6 @@ class ArticleOut(ORMBaseModel):
     description: str = Field(..., description="Краткое описание статьи", example="Это краткое описание статьи.")
     body: str = Field(..., description="Основной текст статьи", example="Это основной текст статьи.")
     slug: str = Field(..., description="Уникальный slug статьи", example="zagolovok-stati")
+    status: str = Field(..., description="Статус статьи", example="DRAFT")
     tagList: List[str] = Field(default_factory=list, description="Список тегов статьи", example=["тег"])
     author: Optional[ProfileOut] = Field(None, description="Автор статьи")
