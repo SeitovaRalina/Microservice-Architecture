@@ -9,7 +9,7 @@ from src.repositories.subscriber_repository import SubscriberRepository
 logger = logging.getLogger(__name__)
 PUSH_URL = os.getenv("PUSH_URL")
 
-@celery_app.task(name="notify_subscribers", max_retries=5)
+@celery_app.task(name="post.notify", max_retries=5)
 def notify_subscribers(author_id: int, article_id: int, article_title: str):
     title_snippet = article_title[:10] + "..." if len(article_title) > 10 else article_title
     message = f"Пользователь {author_id} выпустил новый пост: {title_snippet}"

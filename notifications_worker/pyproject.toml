@@ -1,7 +1,7 @@
 [project]
-name = "users-service"
+name = "notifications-worker"
 version = "0.1.0"
-description = "Users microservice"
+description = "Notifications worker for SAGA"
 authors = [
     {name = "Ralina", email = "seitovaralina1@gmail.com"}
 ]

@@ -61,12 +61,13 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
       BACKEND_SERVICE_URL: ${BACKEND_SERVICE_URL}
+      API_KEY_USERS: ${API_KEY_USERS}
     networks:
       - internal
 
-  worker:
-    build: ./worker
-    container_name: worker
+  notifications_worker:
+    build: ./notifications_worker
+    container_name: notifications_worker
     depends_on:
       push-notificator:
         condition: service_started
@@ -78,6 +79,58 @@ services:
       DATABASE_URL_USERS: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db-users/${POSTGRES_DB_USERS}
       CELERY_BROKER_URL: ${CELERY_BROKER_URL}
       PUSH_URL: ${PUSH_URL}
+    networks:
+      - internal
+
+  moderation_worker:
+    build: ./moderation_worker
+    container_name: moderation_worker
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      BACKEND_SERVICE_URL: ${BACKEND_SERVICE_URL}
+      API_KEY_MODERATION: ${API_KEY_MODERATION}
+    networks:
+      - internal
+
+  preview_worker:
+    build: ./preview_worker
+    container_name: preview_worker
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      BACKEND_SERVICE_URL: ${BACKEND_SERVICE_URL}
+      API_KEY_PREVIEW: ${API_KEY_PREVIEW}
+    networks:
+      - internal
+
+  publish_worker:
+    build: ./publish_worker
+    container_name: publish_worker
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      BACKEND_SERVICE_URL: ${BACKEND_SERVICE_URL}
+      API_KEY_PUBLISH: ${API_KEY_PUBLISH}
+    networks:
+      - internal
+
+  dlq_worker:
+    build: ./dlq_worker
+    container_name: dlq_worker
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      BACKEND_SERVICE_URL: ${BACKEND_SERVICE_URL}
+      API_KEY_DLQ: ${API_KEY_DLQ}
     networks:
       - internal
 
